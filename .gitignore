@@ -1,0 +1,8 @@
+.env/
+.pytest_cache/
+metadrive.egg-info/
+dist/
+data/
+*__pycache__*
+.ipynb_checkpoints/
+visalietuva.egg-info/
