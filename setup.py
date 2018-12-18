@@ -1,10 +1,10 @@
 from setuptools import find_packages, setup
 
 setup(
-    name='visalietuva',
-    version='0.0.1',
+    name='verslilietuvadb',
+    version='0.0.2',
     description='Versli Lietuva EDB controller.',
-    url='https://gitlab.com/wefindx/visalietuva',
+    url='https://gitlab.com/wefindx/verslilietuvaedb',
     author='Mindey',
     author_email='mindey@qq.com',
     license='ASK FOR PERMISSIONS',
