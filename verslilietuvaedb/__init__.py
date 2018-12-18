@@ -8,8 +8,84 @@ from metadrive._requests import get_session
 from metadrive._bs4 import get_soup, dictify_ul
 from metadrive._selenium import get_driver
 
+def login():
+    pass
+
+def search():
+    pass
+
+def export():
+
+    session = get_session()
+
+    print("Landing and retrieving pagination.")
+    url = urljoin(__site_url__, 'companie?perPage=100')
+    soup = get_soup(url, session)
+    pagination = parsers.get_pagination(soup)
+
+    print('Retrieving listing pages. Pages:')
+    records = []
+
+    for page_id in tqdm(range(1, pagination['max_id'])):
+        url = urljoin(__site_url__, 'companie/?perPage=100＆page={}'.format(page_id))
+        soup = get_soup(url, session)
+
+        for row in soup.find_all('tr', {'class': 'companyTab hoverTR'}):
+            records.append(parsers.parse_list_row(row))
+
+    print('Retrieving each company page content. Pages:')
+    driver = get_driver(headless=True)
+    for i, record in tqdm(enumerate(records)):
+        url = record.get('profile_url')
+        if not url[-1].isdigit():
+            skipped.append((i, url))
+            print('SKIPPED:', i, url)
+            continue
+        soup = get_soup(url, driver, use='selenium')
+
+        if soup.find('a', {'href': '#menu1'}):
+            driver.find_element_by_link_text('Qualification').click()
+            qualifications_soup = bs4.BeautifulSoup(driver.page_source, 'html.parser')
+        else:
+            qualifications_soup = None
+
+        if soup.find('a', {'href': '#menu2'}):
+            driver.find_element_by_link_text('Sectors').click()
+            sectors_soup = bs4.BeautifulSoup(driver.page_source, 'html.parser')
+        else:
+            sectors_soup = None
+
+        content = parsers.parse_page(
+            soup, qualifications_soup, sectors_soup)
+
+        records[i].update(content)
+
+    driver.close()
+
+    return records
+
+
+# records = generate()
+
+# df = pandas.io.json.json_normalize(records)
+
+# df['min_employees'] = pandas.to_numeric(df['business.employees'].apply(lambda x: x.split(' - ')[0] if isinstance(x, str) else x))
+# df['max_employees'] = pandas.to_numeric(df['business.employees'].apply(lambda x: x.split(' - ')[-1] if isinstance(x, str) else x))
+# df['min_turnover'] = pandas.to_numeric(df['business.turnover_eur'].apply(lambda x: x.split(' - ')[0][:-1] if isinstance(x, str) else x))
+# df['max_turnover'] = pandas.to_numeric(df['business.turnover_eur'].apply(lambda x: x.split(' - ')[-1][:-1] if isinstance(x, str) else x))
+# df['business.export_as_percent_of_turnover'] = pandas.to_numeric(df['business.export_as_percent_of_turnover'])
+
+# df.to_excel('verslilietuva-edb.xlsx')
+
+# df = pandas.read_excel('verslilietuva-edb.xlsx')
+
+
+# from crawls import db
+
+# db['edb.verslilietuva.lt-companies'].insert_many(records)
+
 class parsers:
-    
+
     def get_pagination(soup):
         pagination = soup.find('ul', {'class': 'pagination'})
         pagelinks = pagination.find_all('li')
@@ -31,15 +107,15 @@ class parsers:
         record['profile_url'] = urljoin(__site_url__, 'profile/'+ bio.attrs['data-company'])
 
         return record
-    
+
     def parse_page(soup,
                    qualifications_soup=None,
                    sectors_soup=None):
         # pages #
-        
+
         record = {}
         record['contact'] = {}
-        
+
         title = soup.find('h3', {'class': 'panel-title'})
         if title is not None:
             record['contact']['company_name'] = title.text
@@ -47,7 +123,7 @@ class parsers:
         contact = soup.find(
             'div', {
                 'class': 'col-lg-3 col-md-3 col-sm-3 col-xs-12 left_col'})
-        
+
         for p in contact.find_all('p'):
             if 'fa-user' in repr(p):
                 record['contact']['contact_person_name'] = p.text.strip()
@@ -75,7 +151,7 @@ class parsers:
                         record['contact']['rekvizitai_url'] = url
                     else:
                         record['contact']['website'] = a.attrs['href']
-        
+
         record['business'] = {}
         main = soup.find('div', {'id': 'home'})
 
@@ -110,12 +186,12 @@ class parsers:
                 p = child.find('p')
                 if p is not None:
                     record['business']['list_of_products'] = p.text.strip()
-            
+
             if '<h4 class="text-uppercase">Video presentation</h4>' in repr(child):
                 iframe = child.find('iframe')
                 if iframe is not None:
                     record['business']['video_presentation_url'] = iframe.attrs['src']
-                    
+
             if '<h4 class="text-uppercase">Awards</h4>' in repr(child):
                 p = child.find('p')
                 if p is not None:
@@ -133,11 +209,11 @@ class parsers:
         download_pdf = main.find('a', {'class': 'btn-danger'})
         if download_pdf is not None:
             record['business']['summary_pdf_url'] = download_pdf.attrs['href']
-        
-        
+
+
         if qualifications_soup is not None:
             main = qualifications_soup.find('div', {'id': 'menu1'})
-            
+
             for child in main.descendants:
                 if '<h4 class="text-uppercase">Awards</h4>' in repr(child):
                     p = child.find('p')
@@ -163,80 +239,3 @@ class parsers:
                 record['business']['sectors'] = json.dumps([dictify_ul(ul)])
 
         return record
-
-
-def login():
-    pass
-
-def search():
-    pass
-
-def generate():
-
-    session = get_session()
-
-    print("Landing and retrieving pagination.")
-    url = urljoin(__site_url__, 'companie?perPage=100')
-    soup = get_soup(url, session)
-    pagination = parsers.get_pagination(soup)
-
-    print('Retrieving listing pages. Pages:')
-    records = []
-
-    for page_id in tqdm(range(1, pagination['max_id'])):
-        url = urljoin(__site_url__, 'companie/?perPage=100＆page={}'.format(page_id))
-        soup = get_soup(url, session)
-
-        for row in soup.find_all('tr', {'class': 'companyTab hoverTR'}):
-            records.append(parsers.parse_list_row(row))
-    
-    print('Retrieving each company page content. Pages:')
-    driver = get_driver(headless=True)
-    for i, record in tqdm(enumerate(records)):
-        url = record.get('profile_url')
-        if not url[-1].isdigit():
-            skipped.append((i, url))
-            print('SKIPPED:', i, url)
-            continue
-        soup = get_soup(url, driver, use='selenium')
-        
-        if soup.find('a', {'href': '#menu1'}):
-            driver.find_element_by_link_text('Qualification').click()
-            qualifications_soup = bs4.BeautifulSoup(driver.page_source, 'html.parser')
-        else:
-            qualifications_soup = None
-        
-        if soup.find('a', {'href': '#menu2'}):
-            driver.find_element_by_link_text('Sectors').click()
-            sectors_soup = bs4.BeautifulSoup(driver.page_source, 'html.parser')
-        else:
-            sectors_soup = None
-        
-        content = parsers.parse_page(
-            soup, qualifications_soup, sectors_soup)
-        
-        records[i].update(content)
-
-    driver.close()
-    
-    return records
-
-
-# records = generate()
-
-# df = pandas.io.json.json_normalize(records)
-
-# df['min_employees'] = pandas.to_numeric(df['business.employees'].apply(lambda x: x.split(' - ')[0] if isinstance(x, str) else x))
-# df['max_employees'] = pandas.to_numeric(df['business.employees'].apply(lambda x: x.split(' - ')[-1] if isinstance(x, str) else x))
-# df['min_turnover'] = pandas.to_numeric(df['business.turnover_eur'].apply(lambda x: x.split(' - ')[0][:-1] if isinstance(x, str) else x))
-# df['max_turnover'] = pandas.to_numeric(df['business.turnover_eur'].apply(lambda x: x.split(' - ')[-1][:-1] if isinstance(x, str) else x))
-# df['business.export_as_percent_of_turnover'] = pandas.to_numeric(df['business.export_as_percent_of_turnover'])
-
-# df.to_excel('verslilietuva-edb.xlsx')
-
-# df = pandas.read_excel('verslilietuva-edb.xlsx')
-
-
-# from crawls import db
-
-# db['edb.verslilietuva.lt-companies'].insert_many(records)
