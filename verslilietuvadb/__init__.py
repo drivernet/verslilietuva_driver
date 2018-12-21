@@ -37,6 +37,11 @@ def export(limit=None):
     driver = get_driver(headless=True)
     for i, record in tqdm(enumerate(records)):
         url = record.get('profile_url')
+
+        if url is not None:
+            del record['profile_url']
+            record['-'] = url
+
         if not url[-1].isdigit():
             skipped.append((i, url))
             print('SKIPPED:', i, url)
@@ -59,6 +64,7 @@ def export(limit=None):
             soup, qualifications_soup, sectors_soup)
 
         records[i].update(content)
+
 
     driver.close()
 
