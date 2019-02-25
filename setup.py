@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='verslilietuvadb',
-    version='0.0.3',
+    version='0.0.4',
     description='Versli Lietuva EDB controller.',
     url='https://gitlab.com/wefindx/verslilietuvaedb',
     author='Mindey',

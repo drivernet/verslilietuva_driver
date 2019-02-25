@@ -8,13 +8,10 @@ from metadrive._requests import get_session
 from metadrive._bs4 import get_soup, dictify_ul
 from metadrive._selenium import get_driver
 
-def login():
+def _login():
     pass
 
-def search():
-    pass
-
-def export(limit=None):
+def _harvest(limit=None):
 
     session = get_session()
 
