@@ -6,7 +6,7 @@ from tqdm import tqdm
 from urllib.parse import urljoin
 from metadrive._requests import get_session
 from metadrive._bs4 import get_soup, dictify_ul
-from metadrive._selenium import get_driver
+from metadrive._selenium import get_drive
 
 def _login():
     pass
@@ -31,7 +31,7 @@ def _harvest(limit=None):
             records.append(parsers.parse_list_row(row))
 
     print('Retrieving each company page content. Pages:')
-    driver = get_driver(headless=True)
+    driver = get_drive(headless=True)
     for i, record in tqdm(enumerate(records)):
         url = record.get('profile_url')
 
